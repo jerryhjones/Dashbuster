@@ -1,0 +1,159 @@
+#import <CoreFoundation/CoreFoundation.h>
+#import <Foundation/Foundation.h>
+#import <UIKit/CDStructures.h>
+#import <UIKit/UIPushButton.h>
+#import <UIKit/UIThreePartButton.h>
+#import <UIKit/UINavigationBar.h>
+#import <UIKit/UIWindow.h>
+#import <UIKit/UIView-Hierarchy.h>
+#import <UIKit/UIHardware.h>
+#import <UIKit/UITable.h>
+#import <UIKit/UITableCell.h>
+#import <UIKit/UITableColumn.h>
+#import "ibboApp.h"
+
+@implementation ibboApp
+
+- (void) applicationDidFinishLaunching: (id) unused
+{
+    UIWindow *window;
+	
+	// create an array of 10 strings
+	dataArray = [NSMutableArray arrayWithCapacity: 10];
+	int i;
+	for(i=0;i<10;i++){
+		[dataArray addObject: [NSString stringWithFormat:@"Row %d",i]];
+	}
+	[dataArray retain];
+	
+	CGRect rect = [UIHardware fullScreenApplicationContentRect];
+    rect.origin.x = rect.origin.y = 0.0f;
+	
+  	window = [[UIWindow alloc] initWithContentRect: rect];
+	mainView = [[UIView alloc] initWithFrame: rect];
+	
+	[window orderFront: self];
+	[window makeKey: self];
+	[window _setHidden: NO];
+	[window setContentView: mainView];
+	
+	UINavigationBar *navBar = [[UINavigationBar alloc] initWithFrame:CGRectMake(0., 0., rect.size.width, [UINavigationBar defaultSize].height)];
+	[navBar setDelegate:self];
+	[navBar showLeftButton:@"Edit" withStyle:0 rightButton:nil withStyle:0];
+	[mainView addSubview:navBar];
+	
+	rect.size.height -= [UINavigationBar defaultSize].height;
+	rect.origin.y = [UINavigationBar defaultSize].height;
+ 	table = [[UITable alloc] initWithFrame:rect];
+	[table setDelegate:self];
+	[table setDataSource:self];
+	[table setSeparatorStyle:1];
+	[table setRowHeight:85.];
+	[table setShowScrollerIndicators:YES];
+	[table setAllowsReordering:YES]; // set to no if reordering isn't wanted
+	
+	UITableColumn * myColumn = [[UITableColumn alloc] initWithTitle:@"Column1" identifier:@"column1" width:rect.size.width];
+	[table addTableColumn: myColumn];
+	
+	[table reloadData];
+	[mainView addSubview:table];
+}
+
+// navigationbar is needed so that we can have a button to set
+// [table enableRowDeletion:YES animated:YES]; this must be done outside the 
+// initialization of the table for the reorder column to be displayed correctly
+- (void)navigationBar:(UINavigationBar*)navBar buttonClicked:(int)button {
+	if (button == 1) {
+		[table enableRowDeletion:YES animated:YES];  // this must be done outside the initialization of the table for the reorder column to be displayed correctly
+		[navBar showLeftButton:nil withStyle:0 rightButton:@"Done" withStyle:3];
+	} else if (button == 0) {
+		[table enableRowDeletion:NO animated:YES];
+		[navBar showLeftButton:@"Edit" withStyle:0 rightButton:nil withStyle:0];
+	}
+}
+
+//---------------------------------------------------------------------
+// for reordering and deleting
+//---------------------------------------------------------------------
+
+// return NO if you only want to move rows
+- (BOOL)table:(UITable*)table canDeleteRow:( int)row {
+	//ZZNSLog(@"canDeleteRow: %d",row);
+	return YES;
+}
+
+- (BOOL)table:(UITable*)table willSwipeToDeleteRow:( int)row {
+	return YES;
+}
+
+
+- (BOOL) table:(UITable*)table beginConfirmationForDeletingRow:(id)row withContinuation:(id)row2
+{
+	NSLog(@"being confirm - first:");
+	return NO;
+}
+
+
+// this method must be declared so that rows can be moved
+// if you don't want to delete rows, then return NO from table:canDeleteRow:
+- (void)table:(UITable*)table deleteRow:(int)row {
+	// Allert sheet displayed at centre of screen.
+	NSArray *buttons = [NSArray arrayWithObjects:@"OK", @"Cancel", nil];
+	UIAlertSheet *alertSheet = [[UIAlertSheet alloc] initWithTitle:@"An Alert" buttons:buttons defaultButtonIndex:1 delegate:self context:self];
+	[alertSheet setBodyText:@"Do something?"];
+	[alertSheet popupAlertAnimated:YES];
+	
+	NSLog(@"Delete This Row: %i", row);
+	[dataArray removeObjectAtIndex:row];
+}
+
+// this is requires to move rows, otherwise only the delete button object is shown
+- (BOOL)table:(UITable*)table canMoveRow:(int)row{
+	//ZZNSLog(@"canMoveRow %i", row);
+	if (row == 0)
+		return NO;
+	else
+		return YES;
+}
+
+
+
+-(int)table:(UITable*)table movedRow:(int)row toRow:(int)dest{
+	NSLog(@"table:movedRow:toRow: %i, %i", row, dest);
+	return dest;
+}
+
+
+//---------------------------------------------------------------------
+
+//datasource methods
+-(int)numberOfRowsInTable:(UITable*)table{
+	return [dataArray count];
+}
+
+-(UITableCell*)table:(UITable*)table cellForRow:(int)row column:(int)column{
+	pbCell = [[UIImageAndTextTableCell alloc] init];
+    NSString *helloString = [[NSString alloc] initWithFormat:@"asdf %i", row];
+	[pbCell setTitle:[dataArray objectAtIndex:row]]; 	
+	return pbCell;
+}
+
+- (BOOL)respondsToSelector:(SEL)aSelector {
+	NSLog(@"respondsToSelector: selector = %@", NSStringFromSelector(aSelector));
+	return [super respondsToSelector:aSelector];
+}
+
+//---------------------------------------------------------------------
+
+//alert sheet methods
+- (void)alertSheet:(UIAlertSheet*)sheet buttonClicked:(int)button
+{
+	if ( button == 1 )
+		NSLog(@"Yes");
+	else if ( button == 2 )
+		NSLog(@"No");
+	
+	[sheet dismiss];
+}
+
+@end
